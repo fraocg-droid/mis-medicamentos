@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis Medicamentos</title>
+<style>
+  :root{
+    --azul:#2563eb; --azul-osc:#1e40af; --verde:#16a34a; --rojo:#dc2626;
+    --ambar:#d97706; --gris:#6b7280; --fondo:#f1f5f9; --blanco:#ffffff;
+    --borde:#e2e8f0; --texto:#1e293b;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',system-ui,sans-serif;}
+  body{background:var(--fondo); color:var(--texto); min-height:100vh;}
+  header{background:var(--azul); color:#fff; padding:16px 20px; display:flex; align-items:center; gap:10px; position:sticky; top:0; z-index:50;}
+  header h1{font-size:1.25rem; font-weight:600;}
+  header .reloj{margin-left:auto; font-size:1rem; opacity:.9;}
+  nav{display:flex; background:var(--blanco); border-bottom:1px solid var(--borde); position:sticky; top:56px; z-index:49;}
+  nav button{flex:1; padding:12px 4px; border:none; background:none; font-size:.95rem; color:var(--gris); cursor:pointer; border-bottom:3px solid transparent;}
+  nav button.activo{color:var(--azul); border-bottom-color:var(--azul); font-weight:600;}
+  main{max-width:720px; margin:0 auto; padding:16px;}
+  .tarjeta{background:var(--blanco); border:1px solid var(--borde); border-radius:12px; padding:16px; margin-bottom:14px; box-shadow:0 1px 2px rgba(0,0,0,.04);}
+  .tarjeta h3{font-size:1.05rem; margin-bottom:6px;}
+  .fila{display:flex; align-items:center; gap:8px; flex-wrap:wrap;}
+  .etiqueta{display:inline-block; padding:2px 10px; border-radius:999px; font-size:.78rem; font-weight:600;}
+  .et-manana{background:#fef3c7; color:#92400e;}
+  .et-noche{background:#e0e7ff; color:#3730a3;}
+  .et-ok{background:#dcfce7; color:#166534;}
+  .et-pend{background:#fee2e2; color:#991b1b;}
+  .btn{border:none; border-radius:8px; padding:10px 16px; font-size:.95rem; font-weight:600; cursor:pointer;}
+  .btn-primario{background:var(--azul); color:#fff;}
+  .btn-verde{background:var(--verde); color:#fff;}
+  .btn-rojo{background:#fee2e2; color:var(--rojo);}
+  .btn-gris{background:#e2e8f0; color:var(--texto);}
+  .btn:active{transform:scale(.97);}
+  .btn-grande{width:100%; padding:14px; font-size:1.05rem;}
+  label{display:block; font-size:.85rem; font-weight:600; margin:10px 0 4px; color:#334155;}
+  input,select{width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px; font-size:.95rem;}
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
+  .aviso{border-radius:12px; padding:14px 16px; margin-bottom:14px; font-size:.95rem; line-height:1.45;}
+  .aviso-rojo{background:#fef2f2; border:1px solid #fecaca; color:#991b1b;}
+  .aviso-ambar{background:#fffbeb; border:1px solid #fde68a; color:#92400e;}
+  .aviso-azul{background:#eff6ff; border:1px solid #bfdbfe; color:#1e40af;}
+  .muted{color:var(--gris); font-size:.88rem;}
+  .contacto{background:#f8fafc; border:1px dashed #cbd5e1; border-radius:8px; padding:10px; margin-top:8px; font-size:.9rem;}
+  .contacto a{color:var(--azul); text-decoration:none;}
+  /* Modal de confirmación obligatoria */
+  .velo{position:fixed; inset:0; background:rgba(15,23,42,.65); display:none; align-items:center; justify-content:center; z-index:100; padding:16px;}
+  .velo.visible{display:flex;}
+  .modal{background:#fff; border-radius:16px; max-width:440px; width:100%; padding:24px; text-align:center; animation:pulso 1.2s ease-in-out infinite alternate;}
+  @keyframes pulso{from{box-shadow:0 0 0 0 rgba(220,38,38,.35);} to{box-shadow:0 0 0 14px rgba(220,38,38,0);}}
+  .modal .icono{font-size:3rem;}
+  .modal h2{margin:8px 0 4px; font-size:1.3rem;}
+  .modal .dosis{font-size:1.05rem; color:var(--azul-osc); font-weight:600; margin-bottom:14px;}
+  .barra-progreso{height:8px; background:#e2e8f0; border-radius:99px; overflow:hidden; margin-top:8px;}
+  .barra-progreso div{height:100%; border-radius:99px;}
+  table{width:100%; border-collapse:collapse; font-size:.9rem;}
+  th,td{text-align:left; padding:8px 6px; border-bottom:1px solid var(--borde);}
+  th{color:var(--gris); font-weight:600; font-size:.8rem; text-transform:uppercase;}
+  .vacio{text-align:center; color:var(--gris); padding:32px 12px;}
+  .num-grande{font-size:1.9rem; font-weight:700;}
+  .resumen{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:14px;}
+  .resumen .tarjeta{margin:0; text-align:center; padding:12px;}
+  @media(max-width:480px){ .grid2{grid-template-columns:1fr;} header h1{font-size:1.05rem;} }
+</style>
+</head>
+<body>
+
+<header>
+  <span style="font-size:1.5rem">💊</span>
+  <h1>Mis Medicamentos</h1>
+  <span class="reloj" id="reloj"></span>
+</header>
+
+<nav>
+  <button class="activo" data-tab="hoy" onclick="cambiarTab('hoy')">Hoy</button>
+  <button data-tab="meds" onclick="cambiarTab('meds')">Medicamentos</button>
+  <button data-tab="historial" onclick="cambiarTab('historial')">Historial</button>
+  <button data-tab="ajustes" onclick="cambiarTab('ajustes')">Ajustes</button>
+</nav>
+
+<main>
+  <div id="avisoNotif" class="aviso aviso-azul" style="display:none">
+    🔔 Para recibir avisos aunque esta pestaña no esté visible, active las notificaciones.
+    <div style="margin-top:8px"><button class="btn btn-primario" onclick="pedirPermiso()">Activar notificaciones</button></div>
+  </div>
+  <div id="avisosResurtido"></div>
+
+  <section id="tab-hoy">
+    <div class="resumen">
+      <div class="tarjeta"><div class="num-grande" id="rTomadas">0</div><div class="muted">Tomadas hoy</div></div>
+      <div class="tarjeta"><div class="num-grande" id="rPendientes" style="color:var(--rojo)">0</div><div class="muted">Pendientes</div></div>
+      <div class="tarjeta"><div class="num-grande" id="rProximas" style="color:var(--ambar)">0</div><div class="muted">Próximas</div></div>
+    </div>
+    <div id="listaHoy"></div>
+  </section>
+
+  <section id="tab-meds" style="display:none">
+    <button class="btn btn-primario btn-grande" onclick="mostrarFormulario()">➕ Agregar medicamento</button>
+    <div id="formularioMed" class="tarjeta" style="display:none; margin-top:14px">
+      <h3 id="tituloForm">Nuevo medicamento</h3>
+      <input type="hidden" id="fId">
+      <label>Nombre del medicamento *</label>
+      <input id="fNombre" placeholder="Ej.: Losartán">
+      <label>Dosis *</label>
+      <input id="fDosis" placeholder="Ej.: 50 mg, 1 tableta">
+      <label>¿Cuándo se toma? *</label>
+      <div class="grid2">
+        <label style="font-weight:400; display:flex; gap:8px; align-items:center; margin:0"><input type="checkbox" id="fManana" style="width:auto" checked> ☀️ Mañana</label>
+        <label style="font-weight:400; display:flex; gap:8px; align-items:center; margin:0"><input type="checkbox" id="fNoche" style="width:auto"> 🌙 Noche</label>
+      </div>
+      <div class="grid2">
+        <div><label>Unidades por toma</label><input id="fPorToma" type="number" min="0.5" step="0.5" value="1"></div>
+        <div><label>Existencias actuales (unidades)</label><input id="fStock" type="number" min="0" step="0.5" value="30"></div>
+      </div>
+      <label>Avisar resurtido con anticipación de</label>
+      <select id="fAviso">
+        <option value="7">1 semana (7 días)</option>
+        <option value="10">10 días</option>
+        <option value="14" selected>2 semanas (14 días)</option>
+      </select>
+      <label>Médico que lo recetó</label>
+      <input id="fMedico" placeholder="Nombre del médico">
+      <div class="grid2">
+        <div><label>Teléfono del médico</label><input id="fTel" placeholder="Ej.: 555 123 4567"></div>
+        <div><label>Correo del médico</label><input id="fEmail" type="email" placeholder="doctor@clinica.com"></div>
+      </div>
+      <div class="fila" style="margin-top:14px">
+        <button class="btn btn-verde" onclick="guardarMed()">💾 Guardar</button>
+        <button class="btn btn-gris" onclick="ocultarFormulario()">Cancelar</button>
+      </div>
+    </div>
+    <div id="listaMeds" style="margin-top:14px"></div>
+  </section>
+
+  <section id="tab-historial" style="display:none">
+    <div class="tarjeta">
+      <h3>Dosis ingeridas por día</h3>
+      <div id="tablaHistorial"></div>
+    </div>
+  </section>
+
+  <section id="tab-ajustes" style="display:none">
+    <div class="tarjeta">
+      <h3>Horarios de recordatorio</h3>
+      <div class="grid2">
+        <div><label>☀️ Toma de la mañana</label><input type="time" id="aHoraManana"></div>
+        <div><label>🌙 Toma de la noche</label><input type="time" id="aHoraNoche"></div>
+      </div>
+      <button class="btn btn-primario" style="margin-top:14px" onclick="guardarAjustes()">Guardar horarios</button>
+    </div>
+    <div class="tarjeta">
+      <h3>Sobre los avisos</h3>
+      <p class="muted">Los recordatorios no se pueden posponer: el aviso se repite cada 5 minutos hasta que confirme la toma con el botón «Ya lo tomé». Mantenga esta página abierta en el navegador (puede fijarla como pestaña) para recibir las notificaciones.</p>
+    </div>
+  </section>
+</main>
+
+<!-- Modal de confirmación obligatoria -->
+<div class="velo" id="velo">
+  <div class="modal">
+    <div class="icono">⏰💊</div>
+    <h2 id="mTitulo"></h2>
+    <div class="dosis" id="mDosis"></div>
+    <p class="muted" id="mHora"></p>
+    <p style="margin:12px 0; font-size:.92rem">Confirme únicamente <strong>después</strong> de haber tomado el medicamento. Este aviso no se puede posponer.</p>
+    <button class="btn btn-verde btn-grande" onclick="confirmarDesdeModal()">✅ Ya lo tomé</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* ============ Datos y persistencia ============ */
+const K = 'misMedicamentos_v1';
+let db = cargar();
+function cargar(){
+  try{
+    const d = JSON.parse(localStorage.getItem(K));
+    if(d && d.meds) return d;
+  }catch(e){}
+  return { meds: [], log: [], ajustes: { horaManana:'06:00', horaNoche:'19:30' } };
+}
+function guardar(){ localStorage.setItem(K, JSON.stringify(db)); }
+
+/* ============ Utilidades ============ */
+const SLOTS = { manana:{nombre:'Mañana', emoji:'☀️'}, noche:{nombre:'Noche', emoji:'🌙'} };
+function hoyISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function horaSlot(slot){ return slot==='manana' ? db.ajustes.horaManana : db.ajustes.horaNoche; }
+function minutosDe(hhmm){ const [h,m]=hhmm.split(':').map(Number); return h*60+m; }
+function hora12(hhmm){
+  if(!hhmm) return '';
+  const [h,m]=hhmm.split(':').map(Number);
+  const sufijo = h<12 ? 'a. m.' : 'p. m.';
+  let h12 = h%12; if(h12===0) h12=12;
+  return h12+':'+String(m).padStart(2,'0')+' '+sufijo;
+}
+function minutosAhora(){ const d=new Date(); return d.getHours()*60+d.getMinutes(); }
+function yaTomado(medId, fecha, slot){ return db.log.some(l=>l.medId===medId && l.fecha===fecha && l.slot===slot); }
+function esc(s){ return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+/* Consumo diario de un medicamento (unidades/día) */
+function consumoDiario(m){ return (m.horarios.length) * (m.porToma||1); }
+/* Días de existencias restantes */
+function diasRestantes(m){ const c=consumoDiario(m); return c>0 ? Math.floor((m.stock||0)/c) : Infinity; }
+
+/* ============ Estado de tomas de hoy ============ */
+/* Devuelve [{med, slot, estado: 'tomado'|'pendiente'|'proxima'}] */
+function tomasDeHoy(){
+  const fecha=hoyISO(), ahora=minutosAhora(), lista=[];
+  for(const m of db.meds){
+    for(const slot of m.horarios){
+      let estado;
+      if(yaTomado(m.id, fecha, slot)) estado='tomado';
+      else if(ahora >= minutosDe(horaSlot(slot))) estado='pendiente';
+      else estado='proxima';
+      lista.push({med:m, slot, estado});
+    }
+  }
+  const orden={pendiente:0, proxima:1, tomado:2};
+  lista.sort((a,b)=> orden[a.estado]-orden[b.estado] || minutosDe(horaSlot(a.slot))-minutosDe(horaSlot(b.slot)));
+  return lista;
+}
+
+/* ============ Confirmación de toma ============ */
+function confirmarToma(medId, slot){
+  const m = db.meds.find(x=>x.id===medId);
+  if(!m || yaTomado(medId, hoyISO(), slot)) return;
+  db.log.push({ medId, fecha: hoyISO(), slot, hora: new Date().toTimeString().slice(0,5) });
+  m.stock = Math.max(0, +( (m.stock||0) - (m.porToma||1) ).toFixed(2));
+  guardar();
+  render();
+  revisarPendientes();
+}
+
+/* ============ Recordatorios (no posponibles) ============ */
+const REPETIR_MS = 5*60*1000; // reavisar cada 5 minutos
+let ultimoAviso = 0;
+let colaModal = [];
+
+function revisarPendientes(){
+  const pendientes = tomasDeHoy().filter(t=>t.estado==='pendiente');
+  colaModal = pendientes;
+  if(pendientes.length===0){ cerrarModal(); return; }
+  mostrarModal(pendientes[0]);
+  const ahora = Date.now();
+  if(ahora - ultimoAviso >= REPETIR_MS){
+    ultimoAviso = ahora;
+    sonar();
+    notificar(pendientes);
+  }
+}
+
+function mostrarModal(t){
+  document.getElementById('mTitulo').textContent = `Hora de tomar: ${t.med.nombre}`;
+  document.getElementById('mDosis').textContent = `Dosis: ${t.med.dosis}`;
+  document.getElementById('mHora').textContent = `${SLOTS[t.slot].emoji} Toma de la ${SLOTS[t.slot].nombre.toLowerCase()} (${hora12(horaSlot(t.slot))})` + (colaModal.length>1 ? ` — y ${colaModal.length-1} más en espera` : '');
+  document.getElementById('velo').classList.add('visible');
+  document.getElementById('velo').dataset.medId = t.med.id;
+  document.getElementById('velo').dataset.slot = t.slot;
+}
+function cerrarModal(){ document.getElementById('velo').classList.remove('visible'); }
+function confirmarDesdeModal(){
+  const v=document.getElementById('velo');
+  confirmarToma(v.dataset.medId, v.dataset.slot);
+}
+
+function notificar(pendientes){
+  if(!('Notification' in window) || Notification.permission!=='granted') return;
+  for(const t of pendientes){
+    new Notification('💊 Recordatorio de medicamento', {
+      body: `${t.med.nombre} — ${t.med.dosis}\nToma de la ${SLOTS[t.slot].nombre.toLowerCase()}. Confirme en la app cuando lo haya tomado.`,
+      tag: 'med-'+t.med.id+'-'+t.slot, renotify: true
+    });
+  }
+}
+function pedirPermiso(){
+  if(!('Notification' in window)){ alert('Este navegador no admite notificaciones.'); return; }
+  Notification.requestPermission().then(()=>{ actualizarAvisoNotif(); });
+}
+function actualizarAvisoNotif(){
+  const el=document.getElementById('avisoNotif');
+  el.style.display = ('Notification' in window && Notification.permission==='default') ? 'block' : 'none';
+}
+function sonar(){
+  try{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    [0,.3,.6].forEach(t=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value=880; g.gain.setValueAtTime(.25, ctx.currentTime+t);
+      g.gain.exponentialRampToValueAtTime(.001, ctx.currentTime+t+.25);
+      o.start(ctx.currentTime+t); o.stop(ctx.currentTime+t+.3);
+    });
+  }catch(e){}
+}
+
+/* ============ Avisos de resurtido ============ */
+function renderAvisosResurtido(){
+  const cont=document.getElementById('avisosResurtido');
+  cont.innerHTML='';
+  for(const m of db.meds){
+    const dias = diasRestantes(m);
+    if(dias===Infinity) continue;
+    if(dias <= (m.avisoDias||14)){
+      const critico = dias <= 3;
+      const div=document.createElement('div');
+      div.className='aviso ' + (critico?'aviso-rojo':'aviso-ambar');
+      let contacto='';
+      if(m.medico){
+        contacto = `<div class="contacto">👨‍⚕️ <strong>${esc(m.medico)}</strong>`
+          + (m.tel? ` · 📞 <a href="tel:${esc(m.tel)}">${esc(m.tel)}</a>`:'' )
+          + (m.email? ` · ✉️ <a href="mailto:${esc(m.email)}?subject=Solicitud de receta: ${encodeURIComponent(m.nombre)}">${esc(m.email)}</a>`:'' )
+          + `</div>`;
+      }
+      div.innerHTML = `${critico?'🚨':'⚠️'} <strong>${esc(m.nombre)}</strong>: quedan <strong>${m.stock} unidades</strong> (≈ ${dias} día${dias===1?'':'s'}). `
+        + (critico ? 'Existencias casi agotadas: acuda a la farmacia o contacte a su médico <strong>hoy mismo</strong>.'
+                   : 'Es momento de gestionar el resurtido en la farmacia o pedir una receta nueva a su médico.')
+        + contacto;
+      cont.appendChild(div);
+    }
+  }
+}
+
+/* ============ Render: Hoy ============ */
+function renderHoy(){
+  const tomas = tomasDeHoy();
+  document.getElementById('rTomadas').textContent = tomas.filter(t=>t.estado==='tomado').length;
+  document.getElementById('rPendientes').textContent = tomas.filter(t=>t.estado==='pendiente').length;
+  document.getElementById('rProximas').textContent = tomas.filter(t=>t.estado==='proxima').length;
+  const cont=document.getElementById('listaHoy');
+  if(tomas.length===0){
+    cont.innerHTML='<div class="tarjeta vacio">No hay medicamentos registrados.<br>Vaya a la pestaña <strong>Medicamentos</strong> para agregar el primero.</div>';
+    return;
+  }
+  cont.innerHTML = tomas.map(t=>{
+    const s=SLOTS[t.slot];
+    const reg = db.log.find(l=>l.medId===t.med.id && l.fecha===hoyISO() && l.slot===t.slot);
+    let estadoHtml, accion='';
+    if(t.estado==='tomado') estadoHtml=`<span class="etiqueta et-ok">✔ Tomado ${reg?('a las '+hora12(reg.hora)):''}</span>`;
+    else if(t.estado==='pendiente'){
+      estadoHtml=`<span class="etiqueta et-pend">⏰ Pendiente desde ${hora12(horaSlot(t.slot))}</span>`;
+      accion=`<button class="btn btn-verde" onclick="confirmarToma('${t.med.id}','${t.slot}')">✅ Ya lo tomé</button>`;
+    } else estadoHtml=`<span class="etiqueta ${t.slot==='manana'?'et-manana':'et-noche'}">Programado ${hora12(horaSlot(t.slot))}</span>`;
+    return `<div class="tarjeta">
+      <div class="fila" style="justify-content:space-between">
+        <div>
+          <h3>${s.emoji} ${esc(t.med.nombre)}</h3>
+          <div class="muted">${esc(t.med.dosis)} · ${t.med.porToma||1} unidad(es)</div>
+          <div style="margin-top:6px">${estadoHtml}</div>
+        </div>
+        <div>${accion}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ============ Render: Medicamentos ============ */
+function renderMeds(){
+  const cont=document.getElementById('listaMeds');
+  if(db.meds.length===0){ cont.innerHTML='<div class="tarjeta vacio">Aún no hay medicamentos registrados.</div>'; return; }
+  cont.innerHTML = db.meds.map(m=>{
+    const dias=diasRestantes(m);
+    const pct = Math.max(0, Math.min(100, dias===Infinity?100 : (dias/30)*100));
+    const color = dias<= (m.avisoDias||14) ? (dias<=3?'var(--rojo)':'var(--ambar)') : 'var(--verde)';
+    return `<div class="tarjeta">
+      <div class="fila" style="justify-content:space-between">
+        <h3>💊 ${esc(m.nombre)}</h3>
+        <div class="fila">
+          <button class="btn btn-gris" onclick="editarMed('${m.id}')">✏️ Editar</button>
+          <button class="btn btn-rojo" onclick="eliminarMed('${m.id}')">🗑️</button>
+        </div>
+      </div>
+      <div class="muted">Dosis: ${esc(m.dosis)} · ${m.porToma||1} unidad(es) por toma</div>
+      <div style="margin:8px 0">${m.horarios.map(s=>`<span class="etiqueta ${s==='manana'?'et-manana':'et-noche'}">${SLOTS[s].emoji} ${SLOTS[s].nombre} ${hora12(horaSlot(s))}</span>`).join(' ')}</div>
+      <div class="muted">Existencias: <strong>${m.stock} unidades</strong> ${dias!==Infinity?`(≈ ${dias} días) · aviso a los ${m.avisoDias||14} días`:''}</div>
+      <div class="barra-progreso"><div style="width:${pct}%; background:${color}"></div></div>
+      ${m.medico?`<div class="contacto">👨‍⚕️ <strong>${esc(m.medico)}</strong>${m.tel?` · 📞 <a href="tel:${esc(m.tel)}">${esc(m.tel)}</a>`:''}${m.email?` · ✉️ <a href="mailto:${esc(m.email)}">${esc(m.email)}</a>`:''}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function mostrarFormulario(){ limpiarForm(); document.getElementById('formularioMed').style.display='block'; document.getElementById('tituloForm').textContent='Nuevo medicamento'; }
+function ocultarFormulario(){ document.getElementById('formularioMed').style.display='none'; }
+function limpiarForm(){
+  ['fId','fNombre','fDosis','fMedico','fTel','fEmail'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('fPorToma').value=1;
+  document.getElementById('fStock').value=30;
+  document.getElementById('fAviso').value='14';
+  document.getElementById('fManana').checked=true;
+  document.getElementById('fNoche').checked=false;
+}
+function editarMed(id){
+  const m=db.meds.find(x=>x.id===id); if(!m) return;
+  cambiarTab('meds');
+  document.getElementById('formularioMed').style.display='block';
+  document.getElementById('tituloForm').textContent='Editar medicamento';
+  document.getElementById('fId').value=m.id;
+  document.getElementById('fNombre').value=m.nombre;
+  document.getElementById('fDosis').value=m.dosis;
+  document.getElementById('fPorToma').value=m.porToma||1;
+  document.getElementById('fStock').value=m.stock||0;
+  document.getElementById('fAviso').value=String(m.avisoDias||14);
+  document.getElementById('fMedico').value=m.medico||'';
+  document.getElementById('fTel').value=m.tel||'';
+  document.getElementById('fEmail').value=m.email||'';
+  document.getElementById('fManana').checked=m.horarios.includes('manana');
+  document.getElementById('fNoche').checked=m.horarios.includes('noche');
+}
+function guardarMed(){
+  const nombre=document.getElementById('fNombre').value.trim();
+  const dosis=document.getElementById('fDosis').value.trim();
+  const horarios=[];
+  if(document.getElementById('fManana').checked) horarios.push('manana');
+  if(document.getElementById('fNoche').checked) horarios.push('noche');
+  if(!nombre || !dosis){ alert('Indique el nombre y la dosis del medicamento.'); return; }
+  if(horarios.length===0){ alert('Seleccione al menos un horario (mañana o noche).'); return; }
+  const datos={
+    nombre, dosis, horarios,
+    porToma: parseFloat(document.getElementById('fPorToma').value)||1,
+    stock: parseFloat(document.getElementById('fStock').value)||0,
+    avisoDias: parseInt(document.getElementById('fAviso').value)||14,
+    medico: document.getElementById('fMedico').value.trim(),
+    tel: document.getElementById('fTel').value.trim(),
+    email: document.getElementById('fEmail').value.trim()
+  };
+  const id=document.getElementById('fId').value;
+  if(id){ Object.assign(db.meds.find(x=>x.id===id), datos); }
+  else { datos.id='m'+Date.now(); db.meds.push(datos); }
+  guardar(); ocultarFormulario(); render(); revisarPendientes();
+}
+function eliminarMed(id){
+  const m=db.meds.find(x=>x.id===id);
+  if(m && confirm(`¿Eliminar «${m.nombre}» y dejar de recibir sus recordatorios?`)){
+    db.meds = db.meds.filter(x=>x.id!==id);
+    guardar(); render(); revisarPendientes();
+  }
+}
+
+/* ============ Render: Historial ============ */
+function renderHistorial(){
+  const cont=document.getElementById('tablaHistorial');
+  if(db.log.length===0){ cont.innerHTML='<div class="vacio">Todavía no hay tomas registradas.</div>'; return; }
+  const porDia={};
+  for(const l of db.log){ (porDia[l.fecha]=porDia[l.fecha]||[]).push(l); }
+  const fechas=Object.keys(porDia).sort().reverse().slice(0,30);
+  cont.innerHTML = fechas.map(f=>{
+    const regs=porDia[f];
+    const filas=regs.map(l=>{
+      const m=db.meds.find(x=>x.id===l.medId);
+      return `<tr><td>${SLOTS[l.slot].emoji} ${hora12(l.hora)}</td><td>${esc(m?m.nombre:'(eliminado)')}</td><td>${esc(m?m.dosis:'')}</td></tr>`;
+    }).join('');
+    return `<div style="margin-bottom:16px">
+      <div class="fila" style="justify-content:space-between; margin-bottom:4px">
+        <strong>${f}</strong><span class="etiqueta et-ok">${regs.length} dosis</span>
+      </div>
+      <table><thead><tr><th>Hora</th><th>Medicamento</th><th>Dosis</th></tr></thead><tbody>${filas}</tbody></table>
+    </div>`;
+  }).join('');
+}
+
+/* ============ Ajustes ============ */
+function guardarAjustes(){
+  db.ajustes.horaManana=document.getElementById('aHoraManana').value||'08:00';
+  db.ajustes.horaNoche=document.getElementById('aHoraNoche').value||'20:00';
+  guardar(); render(); revisarPendientes();
+  alert('Horarios guardados: mañana '+hora12(db.ajustes.horaManana)+' · noche '+hora12(db.ajustes.horaNoche));
+}
+
+/* ============ Navegación y arranque ============ */
+function cambiarTab(tab){
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('activo', b.dataset.tab===tab));
+  ['hoy','meds','historial','ajustes'].forEach(t=>document.getElementById('tab-'+t).style.display = t===tab?'block':'none');
+}
+function render(){
+  renderHoy(); renderMeds(); renderHistorial(); renderAvisosResurtido();
+  document.getElementById('aHoraManana').value=db.ajustes.horaManana;
+  document.getElementById('aHoraNoche').value=db.ajustes.horaNoche;
+}
+function 
