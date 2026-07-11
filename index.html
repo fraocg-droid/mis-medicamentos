@@ -460,8 +460,8 @@ function renderHistorial(){
 
 /* ============ Ajustes ============ */
 function guardarAjustes(){
-  db.ajustes.horaManana=document.getElementById('aHoraManana').value||'08:00';
-  db.ajustes.horaNoche=document.getElementById('aHoraNoche').value||'20:00';
+  db.ajustes.horaManana=document.getElementById('aHoraManana').value||'06:00';
+  db.ajustes.horaNoche=document.getElementById('aHoraNoche').value||'19:30';
   guardar(); render(); revisarPendientes();
   alert('Horarios guardados: mañana '+hora12(db.ajustes.horaManana)+' · noche '+hora12(db.ajustes.horaNoche));
 }
@@ -476,4 +476,15 @@ function render(){
   document.getElementById('aHoraManana').value=db.ajustes.horaManana;
   document.getElementById('aHoraNoche').value=db.ajustes.horaNoche;
 }
-function 
+function tic(){
+  document.getElementById('reloj').textContent=new Date().toLocaleTimeString('es',{hour:'numeric',minute:'2-digit',hour12:true});
+  revisarPendientes();
+  renderHoy();
+}
+render();
+actualizarAvisoNotif();
+tic();
+setInterval(tic, 30*1000); // revisar cada 30 segundos
+</script>
+</body>
+</html>
